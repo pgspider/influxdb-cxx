@@ -1,0 +1,31 @@
+name: system test
+
+on: [push, pull_request]
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler:
+          - gcc-10
+        influx_version:
+          - 1.8
+    container:
+      image: "registry.gitlab.com/offa/docker-images/${{ matrix.compiler }}:stable"
+    services:
+      influxdb:
+        image: influxdb:${{ matrix.influx_version }}
+    env:
+      INFLUXDB_SYSTEMTEST_HOST: influxdb
+    name: "influxdb-${{ matrix.influx_version }} (${{ matrix.compiler }})"
+    steps:
+      - uses: actions/checkout@main
+      - name: Setup
+        run: |
+          script/ci_setup.sh
+          apt-get install -y libboost-system1.71-dev
+      - name: Build
+        run: |
+          script/ci_build.sh -DCMAKE_TOOLCHAIN_FILE=./conan_paths.cmake
+          cmake --build build --target systemtest
