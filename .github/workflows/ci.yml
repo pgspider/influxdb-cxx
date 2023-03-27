@@ -1,0 +1,115 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler:
+          - gcc-11
+          - gcc-10
+          - clang-14
+          - clang-13
+        boost:
+          - true
+          - false
+    container:
+      image: "registry.gitlab.com/offa/docker-images/${{ matrix.compiler }}:stable"
+    name: "${{ matrix.compiler }} (Boost: ${{ matrix.boost }})"
+    steps:
+      - uses: actions/checkout@main
+      - name: Install dependencies
+        run: script/ci_setup.sh
+      - name: Install Boost
+        if: ${{ matrix.boost == true }}
+        run: apt-get install -y libboost-system1.71-dev
+      - name: Build
+        run: |
+          script/ci_build.sh -DINFLUXCXX_WITH_BOOST=${{ matrix.boost }}
+          cmake --build build --target unittest
+      - name: Check deployment as cmake subdirectory
+        run: script/ci_testdeploy.sh -DINFLUXCXX_AS_SUBDIR=ON -DINFLUXCXX_WITH_BOOST=${{ matrix.boost }}
+      - name: Install
+        run: cmake --build build --target install
+      - name: Check installed library
+        run: script/ci_testdeploy.sh -DINFLUXCXX_AS_SUBDIR=OFF
+
+
+  build_conan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        boost:
+          - "True"
+          - "False"
+    name: "Conan (Boost: ${{ matrix.boost }})"
+    steps:
+      - uses: actions/checkout@main
+      - name: Setup
+        run: |
+          pip install -U conan
+          echo "~/.local/bin" >> $GITHUB_PATH
+      - name: Setup Conan
+        run: |
+          conan profile new default --detect
+          conan profile update settings.compiler.libcxx=libstdc++11 default
+      - name: Build
+        run: conan create -o influxdb-cxx:boost=${{ matrix.boost }} -o influxdb-cxx:tests=True .
+
+
+  build_windows:
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        compiler:
+          - msvc
+        boost:
+          - true
+          - false
+    name: "${{ matrix.compiler }} (Boost: ${{ matrix.boost }})"
+    steps:
+      - uses: actions/checkout@main
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+      - name: Setup MSVC
+        uses: seanmiddleditch/gha-setup-vsdevenv@master
+      - name: Install dependencies
+        run: |
+          pip install -U conan
+          conan install -o influxdb-cxx:boost=False -o influxdb-cxx:tests=True .
+      - name: Build
+        env:
+          CC: cl
+          CXX: cl
+        run: |
+          if [[ "${{ matrix.boost }}" == "true" ]]; then
+            conan install -o influxdb-cxx:boost=True .
+          fi
+          script/ci_build.sh \
+            -DINFLUXCXX_WITH_BOOST=${{ matrix.boost }} \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_CXX_FLAGS_INIT=-D_WIN32_WINNT=0x0A00 \
+            -G Ninja
+        shell: bash
+      - name: Install
+        run: cmake --build build --target install
+
+
+  build_osx:
+    runs-on: macOS-latest
+    name: "Mac OS X"
+    steps:
+      - uses: actions/checkout@main
+      - name: Install Dependencies
+        run: |
+          pip3 install -U conan
+          conan install -o influxdb-cxx:system=True -o influxdb-cxx:tests=True .
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
+          brew install boost
+      - name: Build
+        run: |
+          script/ci_build.sh
+          cmake --build build --target unittest
