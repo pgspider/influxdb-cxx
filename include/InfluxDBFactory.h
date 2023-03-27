@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -45,16 +46,33 @@ class INFLUXDB_EXPORT InfluxDBFactory
    /// Disables copy constructor
    InfluxDBFactory(const InfluxDBFactory&) = delete;
 
-   /// InfluxDB factory
-   /// Provides InfluxDB instance with given transport
-   /// \param url 	URL defining transport details
-   /// \throw InfluxDBException 	if unrecognised backend or missing protocol
-   static std::unique_ptr<InfluxDB> Get(const std::string& url) noexcept(false);
+    /// InfluxDB factory
+    /// Provides InfluxDB instance which can connect to InfluxDB 1.x
+    /// \param host     InfluxDB 1.x server address
+    /// \param port     InfluxDB 1.x server port
+    /// \param dbName   target database name
+    /// \param username username for V1 basic authentication (optional)
+    /// \param password password for V1 basic authentication (optional)
+    /// \throw InfluxDBException    if host is unrecognised backend or missing protocol
+    static std::unique_ptr<InfluxDB> GetV1(const std::string &host, const int port = 0,
+                                          const std::string &dbName = std::string(),
+                                          const std::string &username = std::string(),
+                                          const std::string &password = std::string()) noexcept(false);
+
+    /// InfluxDB factory
+    /// Provides InfluxDB instance which can connect to InfluxDB 2.x
+    /// \param host     InfluxDB 2.x server address
+    /// \param port     InfluxDB 2.x server port
+    /// \param dbName   target database name mapped with a bucket
+    /// \param token    token for V2 Token authentication
+    /// \param rp       retention policy of target database (optional)
+    /// \throw InfluxDBException    if host is unrecognised backend or missing protocol
+    static std::unique_ptr<InfluxDB> GetV2(const std::string &host, const int port,
+                                          const std::string &db,
+                                          const std::string &token,
+                                          const std::string &rp = std::string()) noexcept(false);
 
  private:
-   ///\return  backend based on provided URL
-   static std::unique_ptr<Transport> GetTransport(const std::string& url);
-
    /// Private constructor disallows to create instance of Factory
    InfluxDBFactory() = default;
 };

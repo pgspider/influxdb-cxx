@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -26,17 +27,12 @@
 
 namespace influxdb::internal
 {
-    std::vector<Point> queryImpl([[maybe_unused]] Transport* transport, [[maybe_unused]] const std::string& query)
-    {
-        throw InfluxDBException("InfluxDB", "Query requires Boost");
-    }
-
-    std::unique_ptr<Transport> withUdpTransport([[maybe_unused]] const http::url& uri)
+    std::unique_ptr<Transport> withUdpTransport([[maybe_unused]] const std::string &hostname,[[maybe_unused]] int port)
     {
         throw InfluxDBException("InfluxDBFactory", "UDP transport requires Boost");
     }
 
-    std::unique_ptr<Transport> withUnixSocketTransport([[maybe_unused]] const http::url& uri)
+    std::unique_ptr<Transport> withUnixSocketTransport([[maybe_unused]] const std::string &socketPath)
     {
         throw InfluxDBException("InfluxDBFactory", "Unix socket transport requires Boost");
     }

@@ -35,14 +35,25 @@ add_unittest(InfluxDBTest)
 add_unittest(InfluxDBFactoryTest)
 
 add_unittest(HttpTest)
-target_link_libraries(HttpTest PRIVATE InfluxDB-Http CurlMock)
+target_link_libraries(HttpTest PRIVATE InfluxDB-Http CurlMock json)
+target_sources(HttpTest PRIVATE ${PROJECT_SOURCE_DIR}/src/ConnectionInfo.cxx ${PROJECT_SOURCE_DIR}/src/Query.cxx)
 
 add_unittest(NoBoostSupportTest)
 target_sources(NoBoostSupportTest PRIVATE ${PROJECT_SOURCE_DIR}/src/NoBoostSupport.cxx)
+target_sources(NoBoostSupportTest PRIVATE ${PROJECT_SOURCE_DIR}/src/ConnectionInfo.cxx)
+
+add_unittest(QueryTest)
+target_link_libraries(QueryTest PRIVATE json)
+target_sources(QueryTest PRIVATE ${PROJECT_SOURCE_DIR}/src/Query.cxx)
+
+add_unittest(InfluxDBParamsTest)
+target_link_libraries(InfluxDBParamsTest PRIVATE json)
+target_sources(InfluxDBParamsTest PRIVATE ${PROJECT_SOURCE_DIR}/src/InfluxDBParams.cxx)
 
 if (INFLUXCXX_WITH_BOOST)
     add_unittest(BoostSupportTest)
     target_link_libraries(BoostSupportTest PRIVATE InfluxDB-BoostSupport Threads::Threads Boost::system date)
+    target_sources(BoostSupportTest PRIVATE ${PROJECT_SOURCE_DIR}/src/ConnectionInfo.cxx)
 endif()
 
 
@@ -52,6 +63,8 @@ add_custom_target(unittest PointTest
     COMMAND InfluxDBFactoryTest
     COMMAND HttpTest
     COMMAND NoBoostSupportTest
+    COMMAND QueryTest
+    COMMAND InfluxDBParamsTest
     COMMAND $<$<BOOL:${INFLUXCXX_WITH_BOOST}>:BoostSupportTest>
 
     COMMENT "Running unit tests\n\n"

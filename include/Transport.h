@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -30,6 +31,7 @@
 
 #include "InfluxDBException.h"
 #include "influxdb_export.h"
+#include "InfluxDBParams.h"
 
 namespace influxdb
 {
@@ -46,7 +48,7 @@ class INFLUXDB_EXPORT Transport
     virtual void send(std::string&& message) = 0;
 
     /// Sends request
-    virtual std::string query([[maybe_unused]] const std::string& query) {
+    virtual std::string query([[maybe_unused]] const std::string& query, [[maybe_unused]] const InfluxDBParams &params = InfluxDBParams()) {
       throw InfluxDBException{"Transport", "Queries are not supported by the selected transport"};
     }
 

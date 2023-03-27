@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -29,6 +30,7 @@
 #include "InfluxDBException.h"
 #include "LineProtocol.h"
 #include "BoostSupport.h"
+#include "Query.h"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -152,9 +154,9 @@ void InfluxDB::addPointToBatch(Point &&point)
   }
 }
 
-std::vector<Point> InfluxDB::query(const std::string &query)
+std::vector<InfluxDBTable> InfluxDB::query(const std::string &query, const InfluxDBParams &params)
 {
-    return internal::queryImpl(mTransport.get(), query);
+    return internal::queryImpl(mTransport.get(), query, params);
 }
 
 void InfluxDB::createDatabaseIfNotExists()

@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,6 +23,7 @@
 
 #include "BoostSupport.h"
 #include "InfluxDBException.h"
+#include "ConnectionInfo.h"
 #include <catch2/catch.hpp>
 
 namespace influxdb::test
@@ -38,20 +40,16 @@ namespace influxdb::test
         TransportDummy dummy;
     }
 
-
-    TEST_CASE("Query impl throws unconditionally", "[NoBoostSupportTest]")
-    {
-        CHECK_THROWS_AS(internal::queryImpl(&dummy, "-ignore-"), InfluxDBException);
-    }
-
     TEST_CASE("With UDP throws transport unconditionally", "[NoBoostSupportTest]")
     {
-        CHECK_THROWS_AS(internal::withUdpTransport(http::url{}), InfluxDBException);
+        auto conn = internal::ConnectionInfo::createConnectionInfoV1("", 0, "", "", "");
+        CHECK_THROWS_AS(internal::withUdpTransport(conn.host, conn.port), InfluxDBException);
     }
 
     TEST_CASE("With Unix socket transport throws unconditionally", "[NoBoostSupportTest]")
     {
-        CHECK_THROWS_AS(internal::withUnixSocketTransport(http::url{}), InfluxDBException);
+        auto conn = internal::ConnectionInfo::createConnectionInfoV1("", 0, "", "", "");
+        CHECK_THROWS_AS(internal::withUnixSocketTransport(conn.host), InfluxDBException);
     }
 
 }

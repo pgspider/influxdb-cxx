@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -24,89 +25,16 @@
 #include "BoostSupport.h"
 #include "UDP.h"
 #include "UnixSocket.h"
-#include <chrono>
-#include <boost/lexical_cast.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <date/date.h>
 
 namespace influxdb::internal
 {
-    namespace
+    std::unique_ptr<Transport> withUdpTransport(const std::string &hostname, int port)
     {
-        std::chrono::system_clock::time_point parseTimeStamp(const std::string& value)
-        {
-            std::istringstream timeString{value};
-            std::chrono::system_clock::time_point timeStamp;
-            timeString >> date::parse("%FT%T%Z", timeStamp);
-            return timeStamp;
-        }
+        return std::make_unique<transports::UDP>(hostname, port);
     }
 
-    std::vector<Point> queryImpl(Transport* transport, const std::string& query)
+    std::unique_ptr<Transport> withUnixSocketTransport(const std::string &socketPath)
     {
-        const auto response = transport->query(query);
-        std::stringstream responseString;
-        responseString << response;
-        std::vector<Point> points;
-        boost::property_tree::ptree pt;
-        boost::property_tree::read_json(responseString, pt);
-
-        for (const auto& result : pt.get_child("results"))
-        {
-            if (const auto isResultEmpty = result.second.find("series"); isResultEmpty == result.second.not_found())
-            {
-                return {};
-            }
-            for (const auto& series : result.second.get_child("series"))
-            {
-                for (const auto& values : series.second.get_child("values"))
-                {
-                    Point point{series.second.get<std::string>("name", "")};
-
-                    if (const auto tags = series.second.get_child_optional("tags"); tags)
-                    {
-                        for (const auto& tag : tags.get())
-                        {
-                            point.addTag(tag.first, tag.second.data());
-                        }
-                    }
-                    const auto columns = series.second.get_child("columns");
-                    auto iColumns = columns.begin();
-                    auto iValues = values.second.begin();
-                    for (; iColumns != columns.end() && iValues != values.second.end(); ++iColumns, ++iValues)
-                    {
-                        const auto value = iValues->second.get_value<std::string>();
-                        const auto column = iColumns->second.get_value<std::string>();
-                        if (column == "time")
-                        {
-                            point.setTimestamp(parseTimeStamp(value));
-                            continue;
-                        }
-                        // cast all values to double, if strings add to tags
-                        try
-                        {
-                            point.addField(column, boost::lexical_cast<double>(value));
-                        }
-                        catch (...)
-                        {
-                            point.addTag(column, value);
-                        }
-                    }
-                    points.push_back(std::move(point));
-                }
-            }
-        }
-        return points;
-    }
-
-    std::unique_ptr<Transport> withUdpTransport(const http::url& uri)
-    {
-        return std::make_unique<transports::UDP>(uri.host, uri.port);
-    }
-
-    std::unique_ptr<Transport> withUnixSocketTransport(const http::url& uri)
-    {
-        return std::make_unique<transports::UnixSocket>(uri.path);
+        return std::make_unique<transports::UnixSocket>(socketPath);
     }
 }

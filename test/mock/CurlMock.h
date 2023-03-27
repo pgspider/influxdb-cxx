@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -45,12 +46,14 @@ namespace influxdb::test
         MAKE_MOCK3(curl_easy_setopt_, CURLcode(CURL*, CURLoption, std::string));
         MAKE_MOCK3(curl_easy_setopt_, CURLcode(CURL*, CURLoption, void*));
         MAKE_MOCK3(curl_easy_setopt_, CURLcode(CURL*, CURLoption, WriteCallbackFn));
+        MAKE_MOCK3(curl_easy_setopt_, CURLcode(CURL*, CURLoption, struct curl_slist*));
         MAKE_MOCK1(curl_easy_cleanup, void(CURL*));
         MAKE_MOCK0(curl_global_cleanup, void());
         MAKE_MOCK1(curl_easy_perform, CURLcode(CURL* easy_handle));
         MAKE_MOCK3(curl_easy_getinfo_, CURLcode(CURL*, CURLINFO, long*));
         MAKE_MOCK3(curl_easy_escape, char*(CURL*, const char*, int));
         MAKE_MOCK1(curl_free, void(void*));
+        MAKE_MOCK2(curl_slist_append, curl_slist*(curl_slist*, const char*));
     };
 
     extern CurlMock curlMock;

@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -180,5 +181,18 @@ namespace influxdb::test
 
         InfluxDB db{std::make_unique<TransportAdapter>(mock)};
         db.createDatabaseIfNotExists();
+    }
+
+    TEST_CASE("Write transmits points have bool value", "[InfluxDBTest]")
+    {
+        auto mock = std::make_shared<TransportMock>();
+        REQUIRE_CALL(*mock, send("p0 f0=0i 4567000000\n"
+                                 "p1 f1=true 4567000000\n"
+                                 "p2 f2=false 4567000000"));
+
+        InfluxDB db{std::make_unique<TransportAdapter>(mock)};
+        db.write({Point{"p0"}.addField("f0", 0).setTimestamp(ignoreTimestamp),
+                  Point{"p1"}.addField("f1", true).setTimestamp(ignoreTimestamp),
+                  Point{"p2"}.addField("f2", false).setTimestamp(ignoreTimestamp)});
     }
 }

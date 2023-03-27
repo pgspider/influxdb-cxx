@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -50,6 +51,7 @@ namespace influxdb::test
     TEST_CASE("Measurement with different types", "[LineProtocolTest]")
     {
         const auto point = Point{"multitype"}
+                               .addField("bool_value", true)
                                .addField("int_value", 567)
                                .addField("longlong_value", 1234567890LL)
                                .addField("double_value", 123.4567)
@@ -58,6 +60,7 @@ namespace influxdb::test
 
         const LineProtocol lineProtocol;
         CHECK_THAT(lineProtocol.format(point), Matches("multitype "
+                                                       "bool_value=true,"
                                                        "int_value=567i,"
                                                        "longlong_value=1234567890i,"
                                                        "double_value=123.45[0-9]*,"
@@ -128,5 +131,27 @@ namespace influxdb::test
                                .setTimestamp(ignoreTimestamp);
         const LineProtocol lineProtocol{"a=0,b=1,c=2"};
         CHECK_THAT(lineProtocol.format(point), Equals(R"(p1,a=0,b=1,c=2,pointtag=3 n=1i 54000000)"));
+    }
+
+    TEST_CASE("Measurement with bool values", "[LineProtocolTest]")
+    {
+        const auto point = Point{"p0"}
+                               .addField("x", true)
+                               .addField("y", false)
+                               .setTimestamp(ignoreTimestamp);
+
+        const LineProtocol lineProtocol;
+        CHECK_THAT(lineProtocol.format(point), Equals(R"(p0 x=true,y=false 54000000)"));
+    }
+
+    TEST_CASE("Measurement with special character", "[LineProtocolTest]")
+    {
+        const auto point = Point{"escape= ,"}
+                               .addField("test= a,", "test =\"")
+                               .addTag("test= ,b", "test =\"")
+                               .setTimestamp(ignoreTimestamp);
+
+        const LineProtocol lineProtocol;
+        CHECK_THAT(lineProtocol.format(point), Equals(R"(escape=\ \,,test\=\ \,b=test\ \=" test\=\ a\,="test =\"" 54000000)"));
     }
 }

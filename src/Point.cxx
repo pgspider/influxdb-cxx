@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -31,9 +32,78 @@
 #include <memory>
 #include <sstream>
 #include <iomanip>
+#include <stdio.h>
 
 namespace influxdb
 {
+
+  namespace
+  {
+    /// Escape for tag keys, tag values and field keys
+    std::string escapeKey(const std::string &key)
+    {
+      std::string ret = {};
+      /// Set the maximum length equal to the length when all characters
+      /// need escaping.
+      ret.reserve(key.length() * 2);
+      for (char c: key)
+      {
+        switch (c)
+        {
+          case ',':
+          case '=':
+          case ' ':
+              ret += '\\';
+          break;
+        }
+        ret += c;
+      }
+      return ret;
+    }
+
+    /// Escape for measurement name
+    std::string escapeMeasurement(const std::string &key)
+    {
+      std::string ret = {};
+      /// Set the maximum length equal to the length when all characters
+      /// need escaping.
+      ret.reserve(key.length() * 2);
+      for (char c: key)
+      {
+        switch (c)
+        {
+          case ',':
+          case ' ':
+              ret += '\\';
+          break;
+        }
+        ret += c;
+      }
+      return ret;
+    }
+
+    /// Escape for string field
+    std::string escapeStringValue(const std::string &value) {
+      std::string ret;
+      /// Set the maximum length equal to the length when all characters
+      /// need escaping. String field must be in double quotes.
+      ret.reserve(value.length() * 2 + 2);
+      ret += '"';
+      for(char c: value)
+      {
+        switch (c)
+        {
+            case '\\':
+            case '\"':
+                ret += '\\';
+                break;
+        }
+        ret += c;
+      }
+      ret += '"';
+      return ret;
+    }
+  }
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
@@ -43,7 +113,7 @@ Point::Point(const std::string& measurement) :
 {
 }
 
-Point&& Point::addField(std::string_view name, const std::variant<int, long long int, std::string, double>& value)
+Point&& Point::addField(std::string_view name, const std::variant<bool, int, long long int, const char *, std::string, double>& value)
 {
   if (name.empty())
   {
@@ -72,6 +142,13 @@ Point&& Point::setTimestamp(std::chrono::time_point<std::chrono::system_clock> t
   return std::move(*this);
 }
 
+Point&& Point::setTimestamp(long long nanos)
+{
+  std::chrono::nanoseconds dur(nanos);
+  std::chrono::time_point<std::chrono::system_clock> timestamp(dur);
+  return setTimestamp(timestamp);
+}
+
 auto Point::getCurrentTimestamp() -> decltype(std::chrono::system_clock::now())
 {
   return std::chrono::system_clock::now();
@@ -85,7 +162,7 @@ std::string Point::toLineProtocol() const
 
 std::string Point::getName() const
 {
-  return mMeasurement;
+  return escapeMeasurement(mMeasurement);
 }
 
 std::chrono::time_point<std::chrono::system_clock> Point::getTimestamp() const
@@ -95,27 +172,28 @@ std::chrono::time_point<std::chrono::system_clock> Point::getTimestamp() const
 
 std::string Point::getFields() const
 {
-  std::string fields;
+  std::string fields = "";
 
   for (const auto& field : mFields)
   {
-    std::stringstream convert;
-    convert << std::setprecision(floatsPrecision);
-
     if (!fields.empty())
     {
-        convert << ",";
+      fields += ",";
     }
 
-    convert << field.first << "=";
+    fields += escapeKey(field.first) + "=";
     std::visit(overloaded {
-      [&convert](int v) { convert << v << 'i'; },
-      [&convert](long long int v) { convert << v << 'i'; },
-      [&convert](double v) { convert  << std::fixed << v; },
-      [&convert](const std::string& v) { convert << '"' << v << '"'; },
-      }, field.second);
-
-    fields += convert.str();
+      [&fields](bool v) { fields += (v == true ? "true" : "false"); },
+      [&fields](int v) { fields += std::to_string(v) + 'i'; },
+      [&fields](long long int v) { fields += std::to_string(v) + 'i'; },
+      [&fields](double v) {
+          char s[128];
+          sprintf(s, "%.*f", floatsPrecision, v);
+          fields += std::string(s);
+        },
+      [&fields](const std::string& v) { fields += escapeStringValue(v); },
+      [&fields](const char *v) { fields += escapeStringValue(std::string(v)); },
+    }, field.second);
   }
 
   return fields;
@@ -132,9 +210,9 @@ std::string Point::getTags() const
     for (const auto& tag : mTags)
     {
         tags += ",";
-        tags += tag.first;
+        tags += escapeKey(tag.first);
         tags += "=";
-        tags += tag.second;
+        tags += escapeKey(tag.second);
     }
 
     return tags.substr(1, tags.size());

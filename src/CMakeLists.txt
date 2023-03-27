@@ -23,14 +23,20 @@ target_link_libraries(InfluxDB-BoostSupport
         date
         )
 
-add_library(InfluxDB-Internal OBJECT LineProtocol.cxx)
+add_library(InfluxDB-Internal OBJECT LineProtocol.cxx Query.cxx)
 target_include_directories(InfluxDB-Internal PRIVATE ${INTERNAL_INCLUDE_DIRS})
+target_link_libraries(InfluxDB-Internal PRIVATE json)
 
+add_library(InfluxDB-Params OBJECT InfluxDBParams.cxx)
+target_include_directories(InfluxDB-Params PRIVATE ${INTERNAL_INCLUDE_DIRS})
+target_link_libraries(InfluxDB-Params PRIVATE json)
 
 add_library(InfluxDB
+    ConnectionInfo.cxx
     InfluxDB.cxx
     Point.cxx
     InfluxDBFactory.cxx
+    $<TARGET_OBJECTS:InfluxDB-Params>
     $<TARGET_OBJECTS:InfluxDB-Internal>
     $<TARGET_OBJECTS:InfluxDB-Http>
     $<TARGET_OBJECTS:InfluxDB-BoostSupport>

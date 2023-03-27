@@ -7,12 +7,15 @@
 
 
 InfluxDB C++ client library
- - Batch write
- - Data exploration
- - Supported transports
+ - Support both InfluxDB 1.x and InfluxDB 2.x (An InfluxDB 2.x bucket must be mapped to a database and retention policy (DBRP) before it can be queried using InfluxQL or write data by influxdb-cxx):
+   - Batch write
+   - Data exploration
+ - Support InfluxDB 1.x with transports
    - HTTP/HTTPS with Basic Auth
    - UDP
    - Unix datagram socket
+ - Support InfluxDB 2.x with transports
+   - HTTP/HTTPS with Token Auth
 
 
 ## Installation
@@ -29,6 +32,22 @@ __Dependencies__
  ```bash
 mkdir build && cd build
 cmake ..
+sudo make install
+ ```
+
+### Cmake build options
+|Name                   |Description                          |Default value|
+|:----------------------|:------------------------------------|:-----------:|
+|BUILD_SHARED_LIBS      |Build shared versions of libraries   |           ON|
+|INFLUXCXX_WITH_BOOST   |Build with Boost support enabled     |           ON|
+|INFLUXCXX_TESTING      |Enable testing for this component    |           ON|
+|INFLUXCXX_SYSTEMTEST   |Enable system tests                  |           ON|
+|INFLUXCXX_COVERAGE     |Enable Coverage                      |          OFF|
+
+For example: disable Boost library and disable testing:
+ ```bash
+mkdir build && cd build
+cmake .. -DINFLUXCXX_WITH_BOOST=OFF -DINFLUXCXX_TESTING=OFF
 sudo make install
  ```
 
@@ -60,7 +79,11 @@ target_link_libraries(example-influx PRIVATE InfluxData::InfluxDB)
 
 ```cpp
 // Provide complete URI
-auto influxdb = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=test");
+// For InfluxDB 1.x
+auto influxdb = influxdb::InfluxDBFactory::GetV1("http://localhost", 8086, "test");
+// For InfluxDB 2.x
+auto influxdb = influxdb::InfluxDBFactory::GetV2("http://localhost", 8086, "test", "auth_token");
+
 influxdb->write(influxdb::Point{"test"}
   .addField("value", 10)
   .addTag("host", "localhost")
@@ -70,7 +93,11 @@ influxdb->write(influxdb::Point{"test"}
 ### Batch write
 
 ```cpp
-auto influxdb = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=test");
+// For InfluxDB 1.x
+auto influxdb = influxdb::InfluxDBFactory::GetV1("http://localhost", 8086, "test");
+// For InfluxDB 2.x
+auto influxdb = influxdb::InfluxDBFactory::GetV2("http://localhost", 8086, "test", "auth_token");
+
 // Write batches of 100 points
 influxdb->batchOf(100);
 
@@ -85,7 +112,11 @@ When batch write is enabled, call `flushBatch()` to flush pending batches.
 This is of particular importance to ensure all points are written prior to destruction.
 
 ```cpp
-auto influxdb = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=test");
+// For InfluxDB 1.x
+auto influxdb = influxdb::InfluxDBFactory::GetV1("http://localhost", 8086, "test");
+// For InfluxDB 2.x
+auto influxdb = influxdb::InfluxDBFactory::GetV2("http://localhost", 8086, "test", "auth_token");
+
 influxdb->batchOf(3);
 influxdb->write(influxdb::Point{"test"}.addField("value", 1));
 influxdb->write(influxdb::Point{"test"}.addField("value", 2));
@@ -99,25 +130,38 @@ influxdb->flushBatch();
 
 ```cpp
 // Available over HTTP only
-auto influxdb = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=test");
+// For InfluxDB 1.x
+auto influxdb = influxdb::InfluxDBFactory::GetV1("http://localhost", 8086, "test");
+// For InfluxDB 2.x
+auto influxdb = influxdb::InfluxDBFactory::GetV2("http://localhost", 8086, "test", "auth_token");
+
 /// Pass an IFQL to get list of points
-std::vector<influxdb::Point> points = idb->query("SELECT * FROM test");
+std::vector<influxdb::InfluxDBTable> result = idb->query("SELECT * FROM test");
+/// Pass an IFQL and param
+influxdb::InfluxDBParams params = influxdb::InfluxDBParams{}.addParam("param1", 1);
+std::vector<influxdb::InfluxDBTable> result = idb->query("SELECT * FROM test WHERE c1 = $param1", params);
+```
+
+### Authentication
+```cpp
+// Available over HTTP/HTTPs only
+// For InfluxDB 1.x: basic authentication
+auto influxdb = influxdb::InfluxDBFactory::GetV1("http://localhost", 8086, "test", "username", "password");
+// For InfluxDB 2.x: token authentication and retention policy
+auto influxdb = influxdb::InfluxDBFactory::GetV2("http://localhost", 8086, "test", "auth_token", "my_-_rp");
 ```
 
 ## Transports
 
-An underlying transport is fully configurable by passing an URI:
-```
-[protocol]://[username:password@]host:port[?db=database]
-```
-<br>
-List of supported transport is following:
+List of InfluxDB 1.x supported transport is following:
 
-| Name        | Dependency  | URI protocol   | Sample URI                            |
-| ----------- |:-----------:|:--------------:| -------------------------------------:|
-| HTTP        | cURL<sup>i)</sup> | `http`/`https` | `http://localhost:8086?db=<db>`      |
-| UDP         | boost       | `udp`          | `udp://localhost:8094`                |
-| Unix socket | boost       | `unix`         | `unix:///tmp/telegraf.sock`           |
+| Name        | Dependency  | URI protocol   | Sample                                     |
+| ----------- |:-----------:|:--------------:| ------------------------------------------:|
+| HTTP        | cURL        | `http`/`https` | `GetV1("http://localhost", 8086, "db")`    |
+| UDP         | boost       | `udp`          | `GetV1("http://localhost", 8094)`          |
+| Unix socket | boost       | `unix`         | `GetV1("unix:///tmp/telegraf.sock")`       |
 
-
-<sup>i)</sup> boost is needed to support queries.
+List of InfluxDB 2.x supported transport is following:
+| Name        | Dependency  | URI protocol   | Sample                                     |
+| ----------- |:-----------:|:--------------:| ------------------------------------------:|
+| HTTP        | cURL        | `http`/`https` | `GetV2("http://localhost", 8086, "db")`    |

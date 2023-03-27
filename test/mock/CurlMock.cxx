@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,7 +56,7 @@ CURLcode curl_easy_setopt(CURL* handle, CURLoption option, ...)
 
     va_list argp;
     va_start(argp, option);
-    std::variant<long, unsigned long, void*, std::string, WriteCallbackFn> value;
+    std::variant<long, unsigned long, void*, std::string, WriteCallbackFn, struct curl_slist*> value;
 
     switch (option)
     {
@@ -80,6 +81,9 @@ CURLcode curl_easy_setopt(CURL* handle, CURLoption option, ...)
             break;
         case CURLOPT_WRITEFUNCTION:
             value = va_arg(argp, WriteCallbackFn);
+            break;
+        case CURLOPT_HTTPHEADER:
+            value = va_arg(argp, struct curl_slist*);
             break;
         default:
             FAIL("Option unsupported by mock: " + std::to_string(option));
@@ -119,4 +123,9 @@ CURLcode curl_easy_getinfo(CURL* curl, CURLINFO info, ...)
     }
     FAIL("Option unsupported by mock: " + std::to_string(info));
     return CURLE_UNKNOWN_OPTION;
+}
+
+curl_slist* curl_slist_append(struct curl_slist* list, const char* string)
+{
+    return influxdb::test::curlMock.curl_slist_append(list, string);
 }

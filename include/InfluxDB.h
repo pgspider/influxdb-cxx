@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -36,6 +37,7 @@
 
 #include "Transport.h"
 #include "Point.h"
+#include "InfluxDBTable.h"
 #include "influxdb_export.h"
 
 namespace influxdb
@@ -62,7 +64,7 @@ class INFLUXDB_EXPORT InfluxDB
     void write(std::vector<Point> &&points);
 
     /// Queries InfluxDB database
-    std::vector<Point> query(const std::string& query);
+    std::vector<InfluxDBTable> query(const std::string& query, const InfluxDBParams &params = InfluxDBParams());
 
     /// Create InfluxDB database if does not exists
     void createDatabaseIfNotExists();

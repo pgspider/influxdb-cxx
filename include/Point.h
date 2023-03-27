@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -51,8 +52,8 @@ class INFLUXDB_EXPORT Point
     /// Adds a tags
     Point&& addTag(std::string_view key, std::string_view value);
 
-    /// Adds filed
-    Point&& addField(std::string_view name, const std::variant<int, long long int, std::string, double>& value);
+    /// Adds field
+    Point&& addField(std::string_view name, const std::variant<bool, int, long long int, const char *, std::string, double>& value);
 
     /// Generates current timestamp
     static auto getCurrentTimestamp() -> decltype(std::chrono::system_clock::now());
@@ -64,6 +65,9 @@ class INFLUXDB_EXPORT Point
 
     /// Sets custom timestamp
     Point&& setTimestamp(std::chrono::time_point<std::chrono::system_clock> timestamp);
+
+    /// Sets custom timestamp by timestamp in nano second
+    Point&& setTimestamp(long long nanos);
 
     /// Name getter
     std::string getName() const;
@@ -91,7 +95,7 @@ protected:
     std::deque<std::pair<std::string, std::string>> mTags;
 
     //// Fields
-    std::deque<std::pair<std::string, std::variant<int, long long int, std::string, double>>> mFields;
+    std::deque<std::pair<std::string, std::variant<bool, int, long long int, const char *, std::string, double>>> mFields;
 };
 
 } // namespace influxdb

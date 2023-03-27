@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -26,14 +27,13 @@
 #include "Transport.h"
 #include "Point.h"
 #include "UriParser.h"
+#include "ConnectionInfo.h"
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace influxdb::internal
 {
-    std::vector<Point> queryImpl(Transport* transport, const std::string& query);
-
-    std::unique_ptr<Transport> withUdpTransport(const http::url& uri);
-    std::unique_ptr<Transport> withUnixSocketTransport(const http::url& uri);
+    std::unique_ptr<Transport> withUdpTransport(const std::string &hostname, int port);
+    std::unique_ptr<Transport> withUnixSocketTransport(const std::string &socketPath);
 }

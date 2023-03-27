@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,30 +27,88 @@
 
 namespace influxdb::test
 {
-    TEST_CASE("Accepts http urls", "[InfluxDBFactoryTest]")
+    TEST_CASE("V1: Accepts http urls", "[InfluxDBFactoryTest]")
     {
-        CHECK(InfluxDBFactory::Get("http://localhost?db=test") != nullptr);
-        CHECK(InfluxDBFactory::Get("https://localhost?db=test") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 0, "test") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("https://localhost", 0, "test") != nullptr);
 
-        CHECK(InfluxDBFactory::Get("http://localhost:8086?db=test") != nullptr);
-        CHECK(InfluxDBFactory::Get("https://localhost:8086?db=test") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 8086, "test") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("https://localhost", 8086, "test") != nullptr);
 
-        CHECK(InfluxDBFactory::Get("https://localhost/?db=test") != nullptr);
-        CHECK(InfluxDBFactory::Get("https://localhost:8086/?db=test") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("https://localhost", 0, "test") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("https://localhost", 8086, "test") != nullptr);
     }
 
-    TEST_CASE("Throws on unrecognised backend", "[InfluxDBFactoryTest]")
+    TEST_CASE("V1: Throws on unrecognised backend", "[InfluxDBFactoryTest]")
     {
-        CHECK_THROWS_AS(InfluxDBFactory::Get("httpX://localhost:8086?db=test"), InfluxDBException);
+        CHECK_THROWS_AS(InfluxDBFactory::GetV1("httpX://localhost", 8086, "test"), InfluxDBException);
     }
 
-    TEST_CASE("Throws on malformed url", "[InfluxDBFactoryTest]")
+    TEST_CASE("V1: Throws on malformed url", "[InfluxDBFactoryTest]")
     {
-        CHECK_THROWS_AS(InfluxDBFactory::Get("localhost:8086?db=test"), InfluxDBException);
+        CHECK_THROWS_AS(InfluxDBFactory::GetV1("localhost", 8086, "test"), InfluxDBException);
     }
 
-    TEST_CASE("Throws on missing database", "[InfluxDBFactoryTest]")
+    TEST_CASE("V1: Throws on missing database", "[InfluxDBFactoryTest]")
     {
-        CHECK_THROWS_AS(InfluxDBFactory::Get("http://localhost:8086"), InfluxDBException);
+        CHECK_THROWS_AS(InfluxDBFactory::GetV1("http://localhost", 8086, ""), InfluxDBException);
+    }
+
+    TEST_CASE("V1: Throws on invalid url", "[InfluxDBFactoryTest]")
+    {
+        CHECK_NOTHROW(InfluxDBFactory::GetV1("http://", 8086, "test"));
+    }
+
+    TEST_CASE("V1: Accept basic authentication", "[InfluxDBFactoryTest]")
+    {
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 8086, "test", "user", "pass") != nullptr);
+
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 8086, "test", "user") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 8086, "test", "user", "") != nullptr);
+
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 8086, "test", "", "pass") != nullptr);
+        CHECK(InfluxDBFactory::GetV1("http://localhost", 8086, "test", "", "") != nullptr);
+    }
+
+    TEST_CASE("V2: Accepts http urls", "[InfluxDBFactoryTest]")
+    {
+        CHECK(InfluxDBFactory::GetV2("http://localhost", 0, "test", "znckeifSEW") != nullptr);
+        CHECK(InfluxDBFactory::GetV2("https://localhost", 0, "test", "znckeifSEW") != nullptr);
+
+        CHECK(InfluxDBFactory::GetV2("http://localhost", 8086, "test", "znckeifSEW") != nullptr);
+        CHECK(InfluxDBFactory::GetV2("https://localhost", 8086, "test", "znckeifSEW") != nullptr);
+
+        CHECK(InfluxDBFactory::GetV2("https://localhost", 0, "test", "znckeifSEW") != nullptr);
+        CHECK(InfluxDBFactory::GetV2("https://localhost", 8086, "test", "znckeifSEW") != nullptr);
+    }
+
+    TEST_CASE("V2: Throws on unrecognised backend", "[InfluxDBFactoryTest]")
+    {
+        CHECK_THROWS_AS(InfluxDBFactory::GetV2("httpX://localhost", 8086, "test", "znckeifSEW"), InfluxDBException);
+    }
+
+    TEST_CASE("V2: Throws on malformed url", "[InfluxDBFactoryTest]")
+    {
+        CHECK_THROWS_AS(InfluxDBFactory::GetV2("localhost", 8086, "test", "znckeifSEW"), InfluxDBException);
+    }
+
+    TEST_CASE("V2: Throws on missing database", "[InfluxDBFactoryTest]")
+    {
+        CHECK_THROWS_AS(InfluxDBFactory::GetV2("http://localhost", 8086, "", "znckeifSEW"), InfluxDBException);
+    }
+
+    TEST_CASE("V2: Throws on invalid URL", "[InfluxDBFactoryTest]")
+    {
+        CHECK_NOTHROW(InfluxDBFactory::GetV2("http://", 8086, "test", "znckeifSEW"));
+    }
+
+    TEST_CASE("V2: Accept specify retention policy", "[InfluxDBFactoryTest]")
+    {
+        CHECK(InfluxDBFactory::GetV2("http://localhost", 8086, "test", "znckeifSEW", "myrp") != nullptr);
+    }
+
+    TEST_CASE("V2: Empty authen token", "[InfluxDBFactoryTest]")
+    {
+        CHECK(InfluxDBFactory::GetV2("http://localhost", 8086, "test", "") != nullptr);
     }
 }

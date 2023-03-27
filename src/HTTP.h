@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -29,6 +30,7 @@
 #define INFLUXDATA_TRANSPORTS_HTTP_H
 
 #include "Transport.h"
+#include "ConnectionInfo.h"
 #include <curl/curl.h>
 #include <memory>
 #include <string>
@@ -41,7 +43,7 @@ class HTTP : public Transport
 {
 public:
   /// Constructor
-  explicit HTTP(const std::string &url);
+  explicit HTTP(const internal::ConnectionInfo &conn);
 
   /// Default destructor
   ~HTTP() override;
@@ -52,7 +54,7 @@ public:
 
   /// Queries database
   /// \throw InfluxDBException	when CURL GET fails
-  std::string query(const std::string &query) override;
+  std::string query(const std::string &query, const InfluxDBParams &params = InfluxDBParams()) override;
 
   /// Creates database used at url if it does not exists
   /// \throw InfluxDBException	when CURL POST fails
@@ -61,6 +63,9 @@ public:
   /// Enable Basic Auth
   /// \param auth <username>:<password>
   void enableBasicAuth(const std::string &auth);
+
+  /// Enable Token Auth
+  void enableTokenAuth(const std::string &token);
 
   /// Get the database name managed by this transport
   [[nodiscard]] std::string databaseName() const;
@@ -71,23 +76,27 @@ public:
 private:
 
   /// Obtain InfluxDB service url from the url passed
-  void obtainInfluxServiceUrl(const std::string &url);
+  void obtainInfluxServiceUrl(internal::ConnectionInfo conn);
 
   /// Obtain database name from the url passed
-  void obtainDatabaseName(const std::string &url);
+  void obtainDatabaseName(internal::ConnectionInfo conn);
 
   /// Initializes CURL for writing and common options
-  /// \throw InfluxDBException	if database (?db=) not specified
-  void initCurl(const std::string &url);
+  /// \throw InfluxDBException	if database not specified
+  void initCurlWrite(internal::ConnectionInfo conn);
 
   /// Initializes CURL for reading
-  void initCurlRead(const std::string &url);
+  /// \throw InfluxDBException	if database not specified
+  void initCurlRead(internal::ConnectionInfo conn);
 
   /// treats responses of CURL requests
-  void treatCurlResponse(const CURLcode &response, long responseCode) const;
+  void treatCurlResponse(const CURLcode &response, long responseCode, std::string buffer) const;
 
   /// CURL pointer configured for writing points
   CURL *writeHandle;
+
+  /// InfluxDB write URL
+  std::string mWriteUrl;
 
   /// CURL pointer configured for querying
   CURL *readHandle;
@@ -100,6 +109,9 @@ private:
 
   /// Database name used
   std::string mDatabaseName;
+
+  /// Database version
+  uint8_t     dbVersion;
 };
 
 } // namespace influxdb

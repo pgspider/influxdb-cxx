@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 // Copyright (c) 2019 Adam Wegrzynek
 //
@@ -34,51 +35,76 @@
 #include "HTTP.h"
 #include "InfluxDBException.h"
 #include "BoostSupport.h"
+#include "ConnectionInfo.h"
 
 namespace influxdb
 {
     namespace internal
     {
-        std::unique_ptr<Transport> withHttpTransport(const http::url& uri)
+        std::unique_ptr<Transport> withHttpTransport(ConnectionInfo conn)
         {
-            auto transport = std::make_unique<transports::HTTP>(uri.url);
-            if (!uri.user.empty())
+            /// Build HTTP transport
+            auto transport = std::make_unique<transports::HTTP>(conn);
+            if (conn.dbVersion == 1 && !conn.username.empty())
             {
-                transport->enableBasicAuth(uri.user + ":" + uri.password);
+                transport->enableBasicAuth(conn.username + ":" + conn.password);
+            }
+            else if (conn.dbVersion == 2 && !conn.token.empty())
+            {
+                /// enable token authorization for InfluxDB 2.x
+                transport->enableTokenAuth(conn.token);
             }
             return transport;
         }
 
+        std::unique_ptr<Transport> GetTransport(const ConnectionInfo &conn)
+        {
+            auto urlCopy = conn.host;
+            http::url parsedUrl = http::ParseHttpUrl(urlCopy);
+
+            if (parsedUrl.protocol.empty())
+            {
+                throw InfluxDBException(__func__, "Ill-formed URI");
+            }
+
+            if (parsedUrl.protocol == "http" || parsedUrl.protocol == "https")
+            {
+                /// Support both InfluxDB v1 and InfluxDB v2
+                return withHttpTransport(conn);
+            }
+            else if (conn.dbVersion == 1 && parsedUrl.protocol == "udp")
+            {
+                /// Support InfluxDB v1 only
+                return withUdpTransport(parsedUrl.path, conn.port);
+            }
+            else if (conn.dbVersion == 1 && parsedUrl.protocol == "unix")
+            {
+                /// Support InfluxDB v1 only
+                return withUnixSocketTransport(parsedUrl.path);
+            }
+            else
+            {
+                throw InfluxDBException(__func__, "Unrecognized backend " + parsedUrl.protocol);
+            }
+        }
     }
 
-    std::unique_ptr<Transport> InfluxDBFactory::GetTransport(const std::string& url)
+    std::unique_ptr<InfluxDB> InfluxDBFactory::GetV1(const std::string &host, const int port,
+                                                const std::string &dbName,
+                                                const std::string &username,
+                                                const std::string &password)
     {
-        static const std::map<std::string, std::function<std::unique_ptr<Transport>(const http::url&)>> map = {
-            {"udp", internal::withUdpTransport},
-            {"http", internal::withHttpTransport},
-            {"https", internal::withHttpTransport},
-            {"unix", internal::withUnixSocketTransport},
-        };
-
-        auto urlCopy = url;
-        http::url parsedUrl = http::ParseHttpUrl(urlCopy);
-        if (parsedUrl.protocol.empty())
-        {
-            throw InfluxDBException(__func__, "Ill-formed URI");
-        }
-
-        const auto iterator = map.find(parsedUrl.protocol);
-        if (iterator == map.end())
-        {
-            throw InfluxDBException(__func__, "Unrecognized backend " + parsedUrl.protocol);
-        }
-
-        return iterator->second(parsedUrl);
+        auto conn = internal::ConnectionInfo::createConnectionInfoV1(host, port, dbName, username, password);
+        return std::make_unique<InfluxDB>(GetTransport(conn));
     }
 
-    std::unique_ptr<InfluxDB> InfluxDBFactory::Get(const std::string& url)
+    std::unique_ptr<InfluxDB> InfluxDBFactory::GetV2(const std::string &host, const int port,
+                                                const std::string &dbName,
+                                                const std::string &token,
+                                                const std::string &rp)
     {
-        return std::make_unique<InfluxDB>(InfluxDBFactory::GetTransport(url));
+        auto conn = internal::ConnectionInfo::createConnectionInfoV2(host, port, dbName, token, rp);
+        return std::make_unique<InfluxDB>(GetTransport(conn));
     }
 
 } // namespace influxdb

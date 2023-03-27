@@ -1,5 +1,6 @@
 // MIT License
 //
+// Copyright (c) 2022 TOSHIBA CORPORATION
 // Copyright (c) 2020-2022 offa
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,7 +32,7 @@ namespace influxdb::test
     class TransportMock : public Transport
     {
         MAKE_MOCK1(send, void(std::string&&), override);
-        MAKE_MOCK1(query, std::string(const std::string&), override);
+        MAKE_MOCK2(query, std::string(const std::string&, const InfluxDBParams&), override);
         MAKE_MOCK0(createDatabase, void(), override);
     };
 
@@ -49,9 +50,9 @@ namespace influxdb::test
             mockImpl->send(std::move(message));
         }
 
-        std::string query(const std::string& query) override
+        std::string query(const std::string& query, const InfluxDBParams& params) override
         {
-            return mockImpl->query(query);
+            return mockImpl->query(query, params);
         }
 
         void createDatabase() override
